@@ -1,52 +1,94 @@
-from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardMarkup, KeyboardButton
-
-DAYS_OF_WEEK = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
-
-
-def get_days_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    for index, day in enumerate(DAYS_OF_WEEK):
-        builder.button(text=day, callback_data=f"select_day:{index}")
-    builder.adjust(2)
-    return builder.as_markup()
+from aiogram.types import (
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
+from aiogram.utils.keyboard import ReplyKeyboardBuilder
+from aiogram.filters.callback_data import CallbackData
 
 
-def get_remind_offset_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.button(text="Отключить уведомление", callback_data="remind_offset:default")
-    for offset in [10, 20, 30, 60]:
-        builder.button(text=f"За {offset} мин", callback_data=f"remind_offset:{offset}")
-    builder.adjust(2)
-    return builder.as_markup()
+# ==========================================
+# 1. Callback-фабрики (для Inline-кнопок)
+# ==========================================
+class ScheduleCB(CallbackData, prefix="sch"):
+    action: str  # "edit_title", "edit_time", "delete"
+    item_id: int
 
 
-def get_schedules_keyboard(schedules) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    for sch in schedules:
-        day_str = DAYS_OF_WEEK[sch.day_of_week][:2]
-        time_str = sch.start_time.strftime("%H:%M")
-        builder.button(
-            text=f"{sch.title} ({day_str} {time_str})",
-            callback_data=f"select_schedule:{sch.id}",
-        )
-    builder.adjust(1)
-    return builder.as_markup()
+class HomeworkCB(CallbackData, prefix="hw"):
+    action: str  # "edit_text", "delete"
+    item_id: int
+
+
+# ==========================================
+# 2. Permanent Reply-клавиатура (внизу экрана)
+# ==========================================
 def get_main_reply_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[
+    builder = ReplyKeyboardBuilder()
+
+    # Ряд 1
+    builder.row(
+        KeyboardButton(text="📅 Расписание"),
+        KeyboardButton(text="📝 Добавить ДЗ")
+    )
+    # Ряд 2 (Новые кнопки управления)
+    builder.row(
+        KeyboardButton(text="⚙️ Изменить расписание"),
+        KeyboardButton(text="✏️ Изменить ДЗ")
+    )
+    # Ряд 3
+    builder.row(
+        KeyboardButton(text="📷 Загрузить фото"),
+        KeyboardButton(text="🗑 Очистить всё")
+    )
+
+    return builder.as_markup(
+        resize_keyboard=True,
+        persistent=True
+    )
+
+
+# ==========================================
+# 3. Inline-клавиатуры (под сообщениями)
+# ==========================================
+def get_schedule_actions_kb(item_id: int) -> InlineKeyboardMarkup:
+    """Inline-кнопки под конкретным занятием"""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
             [
-                KeyboardButton(text="➕ Добавить занятие в расписание"),
-                KeyboardButton(text="📝 Добавить домашнее задание к занятию"),
+                InlineKeyboardButton(
+                    text="✏️ Название",
+                    callback_data=ScheduleCB(action="edit_title", item_id=item_id).pack(),
+                ),
+                InlineKeyboardButton(
+                    text="🕒 Время",
+                    callback_data=ScheduleCB(action="edit_time", item_id=item_id).pack(),
+                ),
             ],
             [
-                KeyboardButton(text="📅 Посмотреть расписание" ),
-                KeyboardButton(text="⚙️ Настройки уведомлений"),
+                InlineKeyboardButton(
+                    text="🗑 Удалить",
+                    callback_data=ScheduleCB(action="delete", item_id=item_id).pack(),
+                ),
             ],
+        ]
+    )
+
+
+def get_homework_actions_kb(item_id: int) -> InlineKeyboardMarkup:
+    """Inline-кнопки под конкретным ДЗ"""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
             [
-                KeyboardButton(text="❌ Отменить дейтсавие"),
+                InlineKeyboardButton(
+                    text="✏️ Изменить текст",
+                    callback_data=HomeworkCB(action="edit_text", item_id=item_id).pack(),
+                ),
+                InlineKeyboardButton(
+                    text="🗑 Удалить",
+                    callback_data=HomeworkCB(action="delete", item_id=item_id).pack(),
+                ),
             ]
-        ],
-        resize_keyboard=True,  # Делает кнопки аккуратными и компактными
-        persistent=True,  # Клавиатура остаётся зафиксированной внизу
+        ]
     )
