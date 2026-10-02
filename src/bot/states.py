@@ -1,5 +1,8 @@
 from aiogram.fsm.state import State, StatesGroup
 
+class UploadSchedulePhotoSG(StatesGroup):
+    waiting_for_photo = State()
+
 class EditScheduleSG(StatesGroup):
     waiting_for_new_title = State()
     waiting_for_new_time = State()
