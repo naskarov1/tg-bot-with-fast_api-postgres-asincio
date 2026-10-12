@@ -1,0 +1,36 @@
+services:
+  bot:
+    build: .
+    container_name: schedule-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: python -m src.main
+
+  db:
+    image: postgres:16-alpine
+    container_name: schedule-bot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: schedule_db
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d schedule_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
